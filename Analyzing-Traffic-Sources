@@ -56,34 +56,182 @@ Incorporating conversion rates (how many successful orders / session):
     NULL, '18', '0', '0.0000'
     'g_ad_2', '6', '0', '0.0000'
     'b_ad_2', '2', '0', '0.0000'
+ —--------------------------------------------------------------------------------------------------------------------
+
+ASSIGNMENTS:
+
+Assignment 1 - Finding Top Traffic Sources by UTM Source, Campaign, and Referring Domains:
+
+    SELECT 
+        utm_source,
+        utm_campaign,
+        http_referer,
+        COUNT(DISTINCT website_session_id) AS sessions
+    FROM website_sessions
+    WHERE created_at < '2012-04-12'
+    GROUP BY utm_source, utm_campaign, http_referer
+    ORDER BY sessions DESC
+
+    # utm_source, utm_campaign, http_referer, sessions
+    'gsearch', 'nonbrand', 'https://www.gsearch.com', '3613'
+    NULL, NULL, NULL, '28'
+    NULL, NULL, 'https://www.gsearch.com', '27'
+    'gsearch', 'brand', 'https://www.gsearch.com', '26'
 
 
+Assignment 2 - Finding Traffic Source Conversion Rates From Sessions to Orders
 
+    SELECT
+        COUNT(DISTINCT website_sessions.website_session_id) AS sessions,
+        COUNT(DISTINCT orders.order_id) AS orders,
+        COUNT(DISTINCT orders.order_id) / COUNT(DISTINCT website_sessions.website_session_id) AS conversion_rate
+    FROM website_sessions
+    LEFT JOIN orders ON website_sessions.website_session_id = orders.website_session_id
+    WHERE website_sessions.created_at < '2012-04-14'
+        AND website_sessions.utm_source = 'gsearch'
+        AND website_sessions.utm_campaign = 'nonbrand';
+ 
+    # sessions, orders, conversion_rate
+    '3895', '112', '0.0288'
 
+—--------------------------------------------------------------------------------------------------------------------
 
+BID OPTIMIZATION & TREND ANALYSIS 
 
+select a range sessions from the website sessions table:
+     SELECT 
+        website_session_id,
+        created_at,
+        MONTH(created_at),
+        WEEK(created_at),
+        YEAR(created_at)
+    FROM website_sessions
+    WHERE website_session_id BETWEEN 100000 AND 150000 
 
+    # website_session_id, created_at, MONTH(created_at), WEEK(created_at), YEAR(created_at)
+    '100000', '2013-06-05 20:04:30', '6', '22', '2013'
+    '100001', '2013-06-05 20:05:00', '6', '22', '2013'
+    '100002', '2013-06-05 20:09:01', '6', '22', '2013'
+    '100003', '2013-06-05 20:14:35', '6', '22', '2013'
+    '100004', '2013-06-05 20:36:48', '6', '22', '2013'
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- —-------------------------------------------------------------------------------------------------
+trended analysis of sessions by week and by year: 
+    SELECT 
+        WEEK(created_at),
+        YEAR(created_at),
+        MIN(DATE(created_at)) AS week_start,
+        COUNT(DISTINCT website_session_id) AS sessions
+    FROM website_sessions
+    WHERE website_session_id BETWEEN 100000 AND 150000 
+    GROUP BY 1, 2
     
+    # WEEK(created_at), YEAR(created_at), week_start, sessions
+    '22', '2013', '2013-06-05', '883'
+    '23', '2013', '2013-06-09', '1920'
+    '24', '2013', '2013-06-16', '2066'
+    '25', '2013', '2013-06-23', '2027'
+    '26', '2013', '2013-06-30', '1919'
+    '27', '2013', '2013-07-07', '1938'
+    '28', '2013', '2013-07-14', '2007'
+—--------------------------------------------------------------------------------------------------------------------
+Pivoting Data with Case and Count DEMO:
+
+    SELECT 
+        primary_product_id,
+        order_id,
+        items_purchased,
+        CASE WHEN items_purchased = 1 THEN order_id ELSE NULL END AS single_item_orders,
+        CASE WHEN items_purchased = 2 THEN order_id ELSE NULL END AS multi_item_orders
+    FROM 
+        orders
+    WHERE order_id BETWEEN 31000 AND 32000
+    
+    # primary_product_id, order_id, items_purchased, single_item_orders, multi_item_orders
+    '1', '31000', '2', NULL, '31000'
+    '1', '31001', '2', NULL, '31001'
+    '1', '31002', '1', '31002', NULL
+    '3', '31003', '1', '31003', NULL
+    '1', '31004', '1', '31004', NULL
+    '1', '31005', '2', NULL, '31005'
+
+Grouping by primary ID: 
+
+  SELECT 
+        primary_product_id,
+        COUNT(DISTINCT CASE WHEN items_purchased = 1 THEN order_id ELSE NULL END) AS single_item_orders,
+        COUNT(DISTINCT CASE WHEN items_purchased = 2 THEN order_id ELSE NULL END) AS multi_item_orders
+    FROM 
+        orders
+    WHERE order_id BETWEEN 31000 AND 32000
+    GROUP BY 1
+
+    # primary_product_id, single_item_orders, multi_item_orders
+    '1', '406', '256'
+    '2', '99', '38'
+    '3', '73', '44'
+    '4', '75', '10'
+—--------------------------------------------------------------------------------------------------------------------
+ASSIGNMENTS:
+
+Assignment 3 - Traffic Trending by Session Volume:
+    SELECT 
+        MIN(DATE(created_at)) AS week_start_date,
+        COUNT(DISTINCT website_session_id) AS sessions
+    FROM website_sessions
+    WHERE created_at < '2012-05-10'
+        AND utm_source = 'gsearch'
+        AND utm_campaign = 'nonbrand'
+    GROUP BY YEARWEEK(created_at);
+
+    # week_start_date, sessions
+    '2012-03-19', '896'
+    '2012-03-25', '956'
+    '2012-04-01', '1152'
+    '2012-04-08', '983'
+    '2012-04-15', '621'
+    '2012-04-22', '594'
+    '2012-04-29', '681'
+    '2012-05-06', '399'
+
+Assignment 4 - Traffic Trending from Session to Order by Device Type: 
+
+    SELECT
+        website_sessions.device_type,
+        COUNT(DISTINCT website_sessions.website_session_id) AS sessions,
+        COUNT(DISTINCT orders.order_id) AS orders,
+        COUNT(DISTINCT orders.order_id) / COUNT(DISTINCT website_sessions.website_session_id) AS session_to_order_conv_rate
+    FROM website_sessions
+    LEFT JOIN orders ON website_sessions.website_session_id = orders.website_session_id
+    WHERE website_sessions.created_at < '2012-05-11'
+        AND utm_source = 'gsearch' 
+        AND utm_campaign = 'nonbrand'
+    GROUP BY 1
+
+    # device_type, sessions, orders, session_to_order_conv_rate
+    'desktop', '3911', '146', '0.0373'
+    'mobile', '2492', '24', '0.0096'
+
+Assignment 5 - Weekly Traffic Trending for Both Desktop and Mobile:
+
+    SELECT
+        MIN(DATE(created_at)) AS week_start_date,
+        COUNT(DISTINCT CASE WHEN device_type = 'desktop' THEN website_sessions.website_session_id ELSE NULL END) AS desktop_sessions,
+        COUNT(DISTINCT CASE WHEN device_type = 'mobile' THEN website_sessions.website_session_id ELSE NULL END) AS mobile_sessions
+    FROM website_sessions
+    WHERE website_sessions.created_at < '2012-06-09'
+        AND website_sessions.created_at > '2012-04-15'
+        AND utm_source = 'gsearch' 
+        AND utm_campaign = 'nonbrand'
+    GROUP BY year(created_at), WEEK(created_at)
+
+    # week_start_date, desktop_sessions, mobile_sessions
+    '2012-04-15', '383', '238'
+    '2012-04-22', '360', '234'
+    '2012-04-29', '425', '256'
+    '2012-05-06', '430', '282'
+    '2012-05-13', '403', '214'
+    '2012-05-20', '661', '190'
+    '2012-05-27', '585', '183'
+    '2012-06-03', '582', '157'
+
+—--------------------------------------------------------------------------------------------------------------------
