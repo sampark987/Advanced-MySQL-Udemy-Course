@@ -71,8 +71,7 @@ Assignment 1 - Select the Most-Viewed Website Pages, Ranked by Session Volume:
 Assignment 2 - Select All Entry Pages and Rank them on Entry Volume:
 
     -- Step 1: find the first pageview for each session
-    -- Step 2: find the url the customer saw on that first pageview
-
+    -- Step 2: find the url that the customer saw on that first pageview
 
     CREATE TEMPORARY TABLE first_pv_per_session
     -- this query will return the website session ids and the first pageview id that they saw
